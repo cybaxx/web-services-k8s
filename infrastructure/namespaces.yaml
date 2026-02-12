@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wetfish-system
+  labels:
+    name: wetfish-system
+    purpose: infrastructure
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wetfish-dev
+  labels:
+    name: wetfish-dev
+    purpose: development
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wetfish-monitoring
+  labels:
+    name: wetfish-monitoring
+    purpose: observability

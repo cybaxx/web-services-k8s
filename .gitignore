@@ -1,0 +1,39 @@
+# Kubernetes
+*.kubeconfig
+kubectl/
+secrets/
+*.env.local
+
+# Development
+.vscode/
+.idea/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Database backups
+*.sql
+*.sql.gz
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+
+# Docker
+.dockerignore
+
+# Helm charts (if used)
+charts/*.tgz
