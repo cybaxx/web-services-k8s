@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: wetfish-system
+  labels:
+    app: traefik
+    component: ingress-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+        component: ingress-controller
+    spec:
+      serviceAccountName: traefik
+      containers:
+      - name: traefik
+        image: traefik:v2.11
+        args:
+          - "--api.insecure=true"
+          - "--providers.kubernetescrd"
+          - "--entrypoints.web.address=:80"
+          - "--entrypoints.websecure.address=:443"
+          - "--entrypoints.traefik.address=:8080"
+          - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+          - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+          - "--certificatesresolvers.letsencrypt.acme.email=letsencrypt@wetfish.net"
+          - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+        ports:
+        - name: web
+          containerPort: 80
+          hostPort: 80
+        - name: websecure
+          containerPort: 443
+          hostPort: 443
+        - name: traefik
+          containerPort: 8080
+        - name: metrics
+          containerPort: 8082
+        volumeMounts:
+        - name: acme-storage
+          mountPath: /acme.json
+          subPath: acme.json
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: traefik
+          initialDelaySeconds: 2
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: traefik
+          initialDelaySeconds: 2
+          periodSeconds: 10
+      volumes:
+      - name: acme-storage
+        persistentVolumeClaim:
+          claimName: traefik-acme-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: wetfish-system
+  labels:
+    app: traefik
+    component: ingress-controller
+spec:
+  type: LoadBalancer
+  ports:
+  - name: web
+    port: 80
+    targetPort: web
+  - name: websecure
+    port: 443
+    targetPort: websecure
+  - name: traefik
+    port: 8080
+    targetPort: traefik
+  - name: metrics
+    port: 8082
+    targetPort: metrics
+  selector:
+    app: traefik
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik
+  namespace: wetfish-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "networking.k8s.io"]
+  resources: ["ingresses", "ingressclasses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["traefik.io"]
+  resources: ["ingressroutes", "middlewares", "services"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik
+subjects:
+- kind: ServiceAccount
+  name: traefik
+  namespace: wetfish-system
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: traefik-acme-pvc
+  namespace: wetfish-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: local-path
